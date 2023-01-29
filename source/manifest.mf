@@ -1,0 +1,4 @@
+Name: com.gbeldilmi.zodiac
+Implementation-Version: 
+Main-Class: com.gbeldilmi.zodiac.Zodiac
+Class-Path: 
