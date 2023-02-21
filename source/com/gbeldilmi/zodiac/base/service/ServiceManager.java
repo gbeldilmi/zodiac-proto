@@ -2,58 +2,148 @@ package com.gbeldilmi.zodiac.base.service;
 
 import java.util.ArrayList;
 
-public class ServiceManager {
-  private ArrayList<Service> services;
+/**
+ * This singleton class is used to manage the services hosted by the Zodiac server.
+ * @see com.gbeldilmi.zodiac.base.service.Service
+ * @see com.gbeldilmi.zodiac.base.service.ServiceEntity
+ * @author gbeldilmi
+ */
+public final class ServiceManager {
+  /**
+   * The instance of the ServiceManager class.
+   */
+  private static ServiceManager instance;
 
-  public ServiceManager() {
-    services = new ArrayList<Service>();
+  /**
+   * The list of service entities.
+   */
+  private ArrayList<ServiceEntity> servicesEntities;
+
+  /**
+   * Innitialize the ServiceManager class.
+   */
+  static {
+    instance = new ServiceManager();
   }
 
-  public void addService(Service service) throws IllegalArgumentException {
-    if (getService(service.getName()) != null) {
-      throw new IllegalArgumentException("Service with name " + service.getName() + " already exists");
+  /**
+   * Construct a new ServiceManager object.
+   */
+  private ServiceManager() {
+    servicesEntities = new ArrayList<ServiceEntity>();
+  }
+
+  /**
+   * Add a service to the list of services.
+   * @param service The service to add
+   * @return The id of the service
+   * @throws NullPointerException If the service is null
+   */
+  public int addService(Service service) throws NullPointerException {
+    int id = servicesEntities.size();
+    if (servicesEntities.add(new ServiceEntity(service))) {
+      return id;
     }
-    services.add(service);
+    return -1;
   }
 
-  public Service getService(String name) {
-    for (Service service : services) {
-      if (service.getName().equals(name)) {
-        return service;
-      }
+  /**
+   * Get the instance of the ServiceManager.
+   * @return The instance of the ServiceManager.
+   */
+  public static ServiceManager getInstance() {
+    return instance;
+  }
+
+  /**
+   * Get the service entity at the specified index.
+   * @param id The index of the service entity
+   * @return The service entity
+   * @throws IndexOutOfBoundsException If the id is out of bounds of the list of services
+   */
+  private ServiceEntity getServiceEntity(int id) throws IndexOutOfBoundsException {
+    if (id >= 0 && id < servicesEntities.size()) {
+      return servicesEntities.get(id);
     }
-    return null;
+    throw new IndexOutOfBoundsException();
   }
 
-  public Status getServiceStatus(String name) throws IllegalArgumentException {
-    Service service = getService(name);
-    if (service == null) {
-      throw new IllegalArgumentException("Service with name " + name + " does not exist");
+  /**
+   * Get the number of services.
+   * @return The number of services
+   */
+  public int getNumberOfServices() {
+    return servicesEntities.size();
+  }
+
+  /**
+   * Get the status of a service.
+   * @param id The id of the service
+   * @return The status of the service
+   * @throws IndexOutOfBoundsException If the id is out of bounds of the list of services
+   */
+  public Status getServiceStatus(int id) throws IndexOutOfBoundsException {
+    return getServiceEntity(id).getStatus();
+  }
+
+  /**
+   * Remove a service from the list of services. The service will be stopped if it is running.
+   * @param id The id of the service to remove
+   * @return The service that was removed
+   * @throws IndexOutOfBoundsException If the id is out of bounds of the list of services
+   */
+  public Service removeService(int id) throws IndexOutOfBoundsException {
+    ServiceEntity se = getServiceEntity(id);
+    if (se.getStatus() == Status.RUNNING) {
+      se.shutdown();
     }
-    return service.getStatus();
+    servicesEntities.remove(se);
+    return se.getService();
   }
 
-  public Service removeService(String name) {
-    Service service = getService(name);
-    services.remove(service);
-    if (service.isRunning()) {
-      service.stop();
+  /**
+   * Restart a service. The service will be stopped if it is running.
+   * @param id The id of the service to restart
+   * @throws IndexOutOfBoundsException If the id is out of bounds of the list of services
+   */
+  public void restartService(int id) throws IndexOutOfBoundsException {
+    ServiceEntity se = getServiceEntity(id);
+    if (se.getStatus() == Status.RUNNING) {
+      se.shutdown();
     }
-    return service;
+    se.start();
   }
 
+  /**
+   * Start a service. The service will only be started if it is ready to be executed.
+   * @param id The id of the service to start
+   * @throws IndexOutOfBoundsException If the id is out of bounds of the list of services
+   */
+  public void startService(int id) throws IndexOutOfBoundsException {
+    ServiceEntity se = getServiceEntity(id);
+    if (se.isReady()) {
+      se.start();
+    }
+  }
+
+  /**
+   * Start all services. Only services that are ready to be executed will be started.
+   */
   public void startAll() {
-    for (Service service : services) {
-      if (!service.isRunning()) {
-        service.start();
+    for (ServiceEntity se : servicesEntities) {
+      if (se.isReady()) {
+        se.start();
       }
     }
   }
 
+  /**
+   * Stop all active services.
+   */
   public void stopAll() {
-    for (Service service : services) {
-      if (service.isRunning()) {
-        service.stop();
+    for (ServiceEntity se : servicesEntities) {
+      if (se.isActive()) {
+        se.shutdown();
       }
     }
   }
